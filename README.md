@@ -1,4 +1,4 @@
-# sync_flags
+# Sync Flags
 
 The idea presented here could have the following benefits:
  
@@ -22,14 +22,12 @@ What if there was something that acted like the starting flag at a race, which c
 Let a sync flag be a message consisting of:
  
 1. Hash of the previous block.
-2. Bitcoin address
+2. Donation address
 3. Nonce
  
 This tiny message could propagate through the network at maximum speed. If miners had to include the hash of this flag in the next block, then all miners wait for this flag, and when it suddenly spread through the network, all miners could simultaneously begin hashing the next block.
  
-The sync flag should not be produced too quickly. You want to give everyone enough time to be ready to hash the next block. Let's say that the hash of the sync flag is a proof of work that is targeted for 2 minutes.
- 
-To fund this proof of work, the protocol is modified to demand that the block produced 10 blocks after the sync flag must allocate 25% of the block reward to the address published by the sync flag. In this way, sync flags are produced in 2 minutes, and blocks are produced in 8 minutes, with 10 minutes total.
+The hash of the sync flag is a proof of work with the same difficulty as normal bitcoin blocks. To fund this proof of work, the protocol is modified to demand that the 10th, 11th, 12th, 13th, 14th blocks produced after the sync flag must each donate 10% of their block reward to the address supplied by the sync block.
  
  
 Illustration 1: https://s32.postimg.org/wzg0hs8lx/sync_flag.png)
@@ -45,7 +43,7 @@ One factor driving centralization is the imperative miners have to achieve low l
  
 **Reduce variance in mining revenue**
  
-Currently, there are about 144 opportunities per day for a pool or solo miner to see any revenue at all. With sync flags, that number doubles to 288. Sync flags are only worth 25% of what a block is worth, but this still represents a significant reduction in variance. This variance is one factor causing solo miners to group into pools, and large pools to be more attractive than small pools.
+Currently, there are about 144 opportunities per day for a pool or solo miner to see any revenue at all. With sync flags, that number doubles to 288. This variance is one factor causing solo miners to group into pools, and large pools to be more attractive than small pools.
  
 **Reduce or eliminate SPV mined blocks**
  
@@ -69,11 +67,11 @@ Centralization pressure due to latency issues has been a major preoccupation ove
  
 Currently, the entire block reward goes to the miner who mines it. One unfortunate consequence of this is that it does not cost the miner anything to covertly stuff the block with transactions. These transactions would pay fees and be indistinguishable from ordinary transactions, but the fees are paid by the miner and then immediately returned to the miner.
  
-With sync flags, the miner must share these transaction fees with the address contained in the sync flag 10 blocks prior. This means that if the miner gives the transactions a normal looking fee, they will incur a cost that will be paid to the sync flag. If the miner wants to avoid this, they must give their stuffing transactions a zero fee, which provides evidence that they are stuffing.
+With sync flags, the miner must share 50% of the transaction fee, distributing it equally to the sync blocks 10, 11, 12, 13 and 14 blocks prior. This means that if the miner gives the transactions a normal looking fee, they will incur a cost that will be paid to the sync flag. If the miner wants to avoid this, they must give their stuffing transactions a zero fee, which provides evidence that they are stuffing.
  
 Also, when miners stuff with transactions using a zero fee, they cannot manipulate the perception of how much fee it takes to get into a block.
  
-Note that miners could still try to covertly stuff blocks that will pay a sync flag that they themselves created. if this is a big concern, it can be addressed by forcing blocks to pay multiple sync flags.
+Miners destribute the donation equally to 5 different sync blocks to avoid two kinds of attack that are easiest to visualize if you imagine the alternative that the miners donate to only a single sync block. In this scheme, they can adjust their bias their mining strategy depending on who mined the sync block. If the sync block belongs to the miner, the anti-stuffing incentive described above would not be effective. If the sync block belongs to a weak competitor, the miner might attack by producing a block with no transactions, so as to reduce the profitability of their competitor in the hope of driving them out of business.
  
 **Gives miners something to do while they wait for attractive transactions to appear**
  
@@ -87,4 +85,25 @@ Also, this creates a more efficient price discovery mechanism for transactions, 
  
 Although a hard fork would be more efficient, sync flags could be easily implemented using a soft fork by introducing the following rule:
  
-Every block must include a transaction which pays 25% of the block reward to the address given by the 10th previous sync flag, and commits to the hash of the 1st previous sync flag.
+Every block must include a transaction which pays 10% of the block reward to the address given by the 10th, 11th, 12th, 13th and 14th previous sync flags, and commits to the hash of the 1st previous sync flag.
+
+#Comment on selfish mining:
+
+Making the sync flag POW target the same as the block reward target is a nod to selfish mining. I have not done any simulations to test this, but it seems that if the sync flag had a lower POW than the block it would be rational for a miner who has just found a block to hide it and begin mining the flag. Insofar as the flag is easier to mine than a block, they might try to mine it while everyone else is still laboring on the block.
+
+#Comment on invalid block spam:
+
+It is possible for a miner to (intentionally or not) attack other miners by producing a block header with the correct proof of work, but which does not contain valid transactions. Defensive miners must decide whether to hash before validating the block or after validating the block. This is a dilemma because both strategies have a downside. If they fully validate the block first, then they will tend to be at a disadvantage in finding the next block compared with miners who hash immediately, and especially compared with the author of the previous block, who already knows whether or not the block is valid. If they hash immediately, then whenever they receive an invalid block, they will waste their hashpower on it until they can learn that it is invalid.
+
+This problem exists in the current protocol, but the problem has somewhat different attributes in the sync flag model.
+
+Problems with the sync flag protocol:
+
+1. Invalid blocks are half as expensive to create. They would remain quite expensive, but perhaps this discount would make the attack more feasible.
+2. Because sync flags are produced in 5 minutes instead of 10, miners have less time to waste by validating blocks, and therefore would be more likely to choose the "head first" mining alternative.
+
+Advantages of the sync flag protocol:
+1. Miners who have not validated the prior block cannot include any transactions when they "head first" mine. If they are mining the sync flag, this is not a disadvantage, since no one can include transactions.
+2. The production of a sync flag on top of an invalid block need not constitute a confirmation from the point of view of SPV nodes. These nodes can reason that a sync flag may have been produced before validation was complete, and only regard blocks as confirmations.
+
+One avenue to investigate for mitigating the risk due to invalid block spam might be punishment. For example, if a means could be devised for a miner to put  up a security deposit that could be collected if the block were invalid, then the penalty for producing this spam could raised if necessary. Fortunately this kind of spam does not currently appear to exist -- possibly because it is so expensive and there are not strong incentives to do it.
