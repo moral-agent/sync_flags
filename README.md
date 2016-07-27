@@ -103,6 +103,7 @@ Problems with the sync flag protocol:
 2. Because sync flags are produced in 5 minutes instead of 10, miners have less time to waste by validating blocks, and therefore would be more likely to choose the "head first" mining alternative.
 
 Advantages of the sync flag protocol:
+
 1. Miners who have not validated the prior block cannot include any transactions when they "head first" mine. If they are mining the sync flag, this is not a disadvantage, since no one can include transactions.
 2. The production of a sync flag on top of an invalid block need not constitute a confirmation from the point of view of SPV nodes. These nodes can reason that a sync flag may have been produced before validation was complete, and only regard blocks as confirmations.
 
