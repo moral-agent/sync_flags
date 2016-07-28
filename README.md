@@ -30,9 +30,9 @@ This tiny message could propagate through the network at maximum speed. If miner
 The hash of the sync flag is a proof of work with the same difficulty as normal bitcoin blocks. To fund this proof of work, the protocol is modified to demand that the 10th, 11th, 12th, 13th, 14th blocks produced after the sync flag must each donate 10% of their block reward to the address supplied by the sync block.
  
  
-Illustration 1: https://s32.postimg.org/wzg0hs8lx/sync_flag.png)
+Illustration 1: https://s32.postimg.org/wzg0hs8lx/sync_flag.png
  
-Illustration 2: https://s32.postimg.org/vc5y9yz4l/sync_flag2.png
+Illustration 2: https://s31.postimg.org/bj8rrvmff/sync_flag3.png
  
  
 #Explanation of reasons:
@@ -108,3 +108,25 @@ Advantages of the sync flag protocol:
 2. The production of a sync flag on top of an invalid block need not constitute a confirmation from the point of view of SPV nodes. These nodes can reason that a sync flag may have been produced before validation was complete, and only regard blocks as confirmations.
 
 One avenue to investigate for mitigating the risk due to invalid block spam might be punishment. For example, if a means could be devised for a miner to put  up a security deposit that could be collected if the block were invalid, then the penalty for producing this spam could raised if necessary. Fortunately this kind of spam does not currently appear to exist -- possibly because it is so expensive and there are not strong incentives to do it.
+
+#Defeating invalid block spam:
+
+If there is concern about the block-with-valid-header-but-invalid-transactions-spam-attack, I have a strategy using sync flags that may drastically reduce the problem.
+
+https://s32.postimg.org/e94tqdqat/sync_flag_invalid_block.png
+
+The key is to relax the requirement that a flag commit to a completely valid block. The flag is valid if it commits to a valid block header, even if the block body is invalid.
+
+From the perspective of an individual miner, they can safely commence mining a flag the moment they obtain (or discover) a valid block header.
+
+As soon as the spam is discovered, miners can choose to either abandon the flag and return to mining on the previous block, or they can continue mining on the flag.
+
+It's difficult for me to game out which of these strategies would be preferable. My first thought is that the miners should have the incentive to mine whichever option has the fewest miners, which should result in a 50/50 split.
+
+However, the miners who continue mining the flag have a chance of ending up in a situation where they mine the flag before anyone mines a valid block. If this happens, it is sub-optimal for them. They can start mining for the next valid block but if someone else broadcasts a valid block header they will be in the same pickle that miners under the current protocol are: they must either keep mining for a valid block, or SPV mine the newly arrived block while they do validation. The third option, of mining a flag, is not available to them, because the flag has already been mined for this cycle.
+
+As a result of the above, it may be most rational for miners to (upon learning that they are mining a flag on top of an invalid block) split their hashpower unevenly between the flag and continuing to mine for a valid block. The hashpower split reflects their estimates of the cost of the above negative outcome. I think the split would be pretty close to 50/50, but deviations from 50/50 would not necessarily be bad. For example, if they split 52/48, with more hashpower toward finding the valid block instead of the flag, then that decreases the likelyhood that the flag will be discovered before the next valid block, which is good for all of the miners. So it's a nice positive feedback.
+
+*****
+
+This approach mostly neutralizes the harm done by the (currently very rare) invalid block spam attack. As a kind of amazing side effect, the work done to produce the spam is incorporated into the blockchain cumulative Proof of Work, and the spammer is not paid for this contribution.
